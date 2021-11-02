@@ -1,0 +1,74 @@
+version: '3'
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "9000:9000"
+    volumes:
+      - .:/var/www
+    networks:
+      - app-network
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ../data/redis:/data
+    entrypoint: redis-server --appendonly yes
+    restart: always
+    networks:
+      - app-network
+    
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8088:80"
+      - "443:443"
+    volumes:
+      - .:/var/www
+      - ./nginx.default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:5.7
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    volumes:
+      - .data/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=request_gate
+      - MYSQL_USER=request_gate
+      - MYSQL_PASSWORD=request_gate
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_ARBITRARY=0
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=request_gate
+      - PMA_PASSWORD=request_gate
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - /sessions
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
